@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# cvbl v0.01 - cloudvBOX banner
+# Author: Andre Machado — cloudvBOX Computing Ltda
+set -euo pipefail
+
+print_logo () {
+    case "${2:-}" in
+      box) COLOR="96m" ;; success) COLOR="92m" ;; warning) COLOR="93m" ;;
+      danger) COLOR="91m" ;; white) COLOR="97m" ;; green) COLOR="32m" ;;
+      *) COLOR="0m" ;;
+    esac
+    printf "\e[%b%b\e[0m" "$COLOR" "$1"
+}
+
+CLOUDVBOX_LOGO="
+               .───────.
+              ╱       ╱│
+             ╱       ╱ │
+    •───────•───────•  │
+   ╱       ╱│       │  •
+  ╱       ╱ │       │ ╱
+ ╱       ╱  │       │╱
+•───────•   •───────•
+│       │  ╱       ╱│
+│       │ ╱       ╱ │
+│       │╱       ╱  │
+•───────•───────•   •
+│       │       │  ╱
+│       │       │ ╱
+│       │       │╱
+•───────•───────•
+"
+
+while getopts "naid" opt; do
+  case "$opt" in
+    n) print_logo "$CLOUDVBOX_LOGO" "box" ;;
+    a) print_logo "$CLOUDVBOX_LOGO" "warning" ;;
+    i) print_logo "$CLOUDVBOX_LOGO" "success" ;;
+    d) print_logo "$CLOUDVBOX_LOGO" "danger" ;;
+    *) echo "Usage: cvbl [-n] [-a] [-i] [-d]"; exit 1 ;;
+  esac
+done
+
+print_logo "\nPOWERED BY: " "warning"
+print_logo "cloud" "white"
+print_logo "vBOX" "box"
+print_logo " Computing Ltd. " "white"
+print_logo "MADE" "green"
+print_logo " IN" "warning"
+print_logo " BRAZIL!" "green"
+print_logo "  Sorocaba/SP.\n" "warning"
+print_logo "https://www.cloudvbox.com\n" "box"

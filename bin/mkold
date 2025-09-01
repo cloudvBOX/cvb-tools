@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# mkold v0.02 - timestamped backup/restore helper
+# Author: Andre Machado — cloudvBOX Computing Ltda
+# License: MIT
+set -euo pipefail
+
+VERSION="0.02"
+BKP_DIR_DEFAULT="/var/bkp_files"
+BKP_DIR="${BKP_DIR_DEFAULT}"
+CLEAR_DAYS=30
+
+usage() {
+  cat <<EOF
+mkold v${VERSION} — Quick timestamped backup/restore for files or directories.
+Usage:
+  mkold [options] <path>
+Options:
+  -d, --dir <dir>     Override backup base directory (default: ${BKP_DIR_DEFAULT})
+  -l, --list          List saved backups (scans ${BKP_DIR})
+  -r, --restore       Restore the latest backup for <path> (keeps current with .res-TS)
+  -c, --clear [days]  Remove backups older than N days (default: ${CLEAR_DAYS})
+  -h, --help          Show this help
+
+Examples:
+  mkold /etc/telegraf/telegraf.conf
+  (cd /etc/telegraf && mkold telegraf.conf)
+  mkold -d /data/backups /etc/hosts
+EOF
+}
+
+timestamp() { date +"%Y%m%d-%H%M%S"; }
+
+abspath() {
+  # prints absolute path without resolving symlinks
+  python3 - <<'PY'
+import os,sys
+p=sys.argv[1]
+print(os.path.abspath(p))
+PY
+}
+
+ensure_dirs() {
+  local base="$1"
+  if [[ ! -d "$base" ]]; then
+    sudo mkdir -p "$base"
+    sudo chmod 755 "$base"
+  fi
+}
+
+save_file() {
+  local src="$1"
+  local ts="$(timestamp)"
+  local abs="$(abspath "$src")"
+  local rel="${abs#/}"
+  local dest_dir="${BKP_DIR}/${rel%/*}"
+  local base="$(basename "$abs")"
+  ensure_dirs "$dest_dir"
+  local out="${dest_dir}/${base}.bak-${ts}"
+
+  if [[ -f "$src" ]]; then
+    cp -a -- "$src" "$out"
+    echo "[OK] Saved file: $out"
+  elif [[ -d "$src" ]]; then
+    # directory -> tar.gz
+    out="${dest_dir}/${base}.bak-${ts}.tar.gz"
+    tar -czf "$out" -C "$(dirname "$abs")" "$(basename "$abs")"
+    echo "[OK] Saved directory archive: $out"
+  else
+    echo "[ERR] Path not found: $src" >&2
+    exit 1
+  fi
+}
+
+list_backups() {
+  local base="${BKP_DIR}"
+  [[ -d "$base" ]] || { echo "No backups in $base"; return 0; }
+  echo "=== Backups under ${base} ==="
+  find "$base" -type f \( -name "*.bak-*" -o -name "*.res-*" \) -printf "%TY-%Tm-%Td %TH:%TM  %s bytes  %p\n" | sort
+}
+
+restore_latest() {
+  local src="$1"
+  local abs="$(abspath "$src")"
+  local rel="${abs#/}"
+  local dest_dir="${BKP_DIR}/${rel%/*}"
+  local base="$(basename "$abs")"
+
+  # backup current before restore (if exists)
+  if [[ -f "$abs" ]]; then
+    local ts="$(timestamp)"
+    cp -a -- "$abs" "${abs}.res-${ts}"
+    echo "[INFO] Current file saved as ${abs}.res-${ts}"
+  fi
+
+  # find latest backup
+  local latest
+  latest=$(ls -1t "${dest_dir}/${base}.bak-"* 2>/dev/null | head -n1 || true)
+
+  if [[ -z "${latest:-}" ]]; then
+    # try tar.gz (directory backups)
+    latest=$(ls -1t "${dest_dir}/${base}.bak-"*.tar.gz 2>/dev/null | head -n1 || true)
+    if [[ -z "${latest:-}" ]]; then
+      echo "[ERR] No backups found for ${abs}" >&2
+      exit 1
+    fi
+    # it's a directory archive, restore
+    echo "[INFO] Restoring directory from ${latest} -> $(dirname "$abs")"
+    tar -xzf "$latest" -C "$(dirname "$abs")"
+    echo "[OK] Restored directory."
+    return
+  fi
+
+  # file restore
+  cp -a -- "$latest" "$abs"
+  echo "[OK] Restored: $abs (from $latest)"
+}
+
+clear_old() {
+  local days="${1:-$CLEAR_DAYS}"
+  [[ "$days" =~ ^[0-9]+$ ]] || { echo "[ERR] Days must be integer"; exit 1; }
+  [[ -d "$BKP_DIR" ]] || { echo "[INFO] No backup dir $BKP_DIR"; exit 0; }
+  echo "[INFO] Deleting backups older than ${days} days in ${BKP_DIR}..."
+  find "$BKP_DIR" -type f \( -name "*.bak-*" -o -name "*.res-*" \) -mtime "+${days}" -print -delete
+}
+
+# -------- main --------
+if [[ $# -lt 1 ]]; then usage; exit 1; fi
+
+ACTION="save"
+ARG_PATH=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d|--dir) shift; BKP_DIR="${1:-}"; [[ -n "$BKP_DIR" ]] || { echo "[ERR] Missing dir"; exit 1; }; shift;;
+    -l|--list) ACTION="list"; shift;;
+    -r|--restore) ACTION="restore"; shift;;
+    -c|--clear) ACTION="clear"; shift; DAYS="${1:-}"; if [[ -n "${DAYS:-}" && "$DAYS" =~ ^[0-9]+$ ]]; then shift; else DAYS=""; fi ;;
+    -h|--help) usage; exit 0;;
+    *) ARG_PATH="${1}"; shift;;
+  esac
+done
+
+# ensure base
+ensure_dirs "$BKP_DIR"
+
+case "$ACTION" in
+  save)
+    [[ -n "${ARG_PATH:-}" ]] || { echo "[ERR] Missing path to save"; exit 1; }
+    save_file "$ARG_PATH"
+    ;;
+  list) list_backups ;;
+  restore)
+    [[ -n "${ARG_PATH:-}" ]] || { echo "[ERR] Missing path to restore"; exit 1; }
+    restore_latest "$ARG_PATH"
+    ;;
+  clear) clear_old "${DAYS:-}";;
+esac

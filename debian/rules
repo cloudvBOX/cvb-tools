@@ -1,0 +1,11 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_install:
+	install -d debian/cvb-tools/usr/bin debian/cvb-tools/usr/local/bin debian/cvb-tools/usr/share/man/man1
+	install -m 0755 bin/mkold debian/cvb-tools/usr/bin/mkold
+	install -m 0755 bin/cvbl  debian/cvb-tools/usr/bin/cvbl
+	ln -sf /usr/bin/mkold debian/cvb-tools/usr/local/bin/mkold
+	ln -sf /usr/bin/cvbl  debian/cvb-tools/usr/local/bin/cvbl
+	install -m 0644 man/mkold.1 debian/cvb-tools/usr/share/man/man1/mkold.1

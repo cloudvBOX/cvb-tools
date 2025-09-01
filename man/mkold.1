@@ -1,0 +1,25 @@
+.TH MKOLD 1 "August 2025" "cvb-tools 0.01" "User Commands"
+.SH NAME
+mkold \- timestamped backup/restore helper
+.SH SYNOPSIS
+.B mkold
+[\-d DIR] [\-l] [\-r] [\-c [DAYS]] PATH
+.SH DESCRIPTION
+.B mkold
+creates timestamped backups of files or directories under a base backup directory,
+and can restore the latest copy or clear old backups.
+.SH OPTIONS
+.TP
+.B \-d, \-\-dir DIR
+Override base backup directory (default: /var/bkp_files).
+.TP
+.B \-l, \-\-list
+List backups found under the base directory.
+.TP
+.B \-r, \-\-restore
+Restore the latest backup for PATH. The current file is first saved with a .res\-TIMESTAMP suffix.
+.TP
+.B \-c, \-\-clear [DAYS]
+Delete backups older than DAYS (default 30).
+.SH AUTHOR
+Andre Machado (cloudvBOX Computing Ltda)

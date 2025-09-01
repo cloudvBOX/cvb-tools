@@ -1,0 +1,5 @@
+cvb-tools (0.01-1) unstable; urgency=medium
+
+  * Initial release (mkold v0.02, cvbl v0.01).
+
+ -- Andre Machado <opensource@cloudvbox.com>  Thu, 28 Aug 2025 12:00:00 -0300

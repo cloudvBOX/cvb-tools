@@ -1,0 +1,14 @@
+Source: cvb-tools
+Section: utils
+Priority: optional
+Maintainer: Andre Machado <opensource@cloudvbox.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/cloudvBOX/cvb-tools
+Rules-Requires-Root: no
+
+Package: cvb-tools
+Architecture: all
+Depends: ${misc:Depends}, bash, coreutils, tar, gzip, findutils, sqlite3
+Description: cloudvBOX Linux admin tools (mkold, cvbl)
+ Small helpers for Linux admins.

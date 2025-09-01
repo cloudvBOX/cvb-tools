@@ -1,0 +1,87 @@
+name: Build & Publish APT repo (gh-pages)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    env:
+      APT_CODENAMES: "trixie bookworm noble"
+      APT_COMPONENT: main
+      APT_ARCHES: "amd64 all"
+      APT_ORIGIN: "cloudvBOX"
+      APT_LABEL: "cvb-tools"
+      APT_DESC: "cloudvBOX tools for Linux admins"
+      APT_DIST_DIR: repo-apt
+      GPG_KEY_ID: ${{ secrets.APT_GPG_KEY_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential debhelper fakeroot devscripts                                   reprepro gnupg dpkg-dev
+
+      - name: Import GPG key
+        run: |
+          mkdir -p ~/.gnupg && chmod 700 ~/.gnupg
+          printf "no-tty
+batch
+pinentry-mode loopback
+" > ~/.gnupg/gpg.conf
+          echo "${{ secrets.APT_GPG_PRIVATE_KEY }}" | gpg --batch --import
+          gpg --list-keys
+
+      - name: Build .deb
+        run: |
+          dpkg-buildpackage -us -uc -b
+          mkdir -p dist
+          mv ../*.deb dist/
+
+      - name: Prepare APT repo layout
+        run: |
+          rm -rf "${APT_DIST_DIR}"
+          mkdir -p "${APT_DIST_DIR}/conf" "${APT_DIST_DIR}/incoming"
+          : > "${APT_DIST_DIR}/conf/distributions"
+          for CODENAME in ${APT_CODENAMES}; do
+            cat <<CONF >> "${APT_DIST_DIR}/conf/distributions"
+Origin: ${APT_ORIGIN}
+Label: ${APT_LABEL}
+Codename: ${CODENAME}
+Architectures: ${APT_ARCHES}
+Components: ${APT_COMPONENT}
+Description: ${APT_DESC}
+SignWith: ${GPG_KEY_ID}
+
+CONF
+          done
+
+      - name: Include packages
+        run: |
+          for DEB in dist/*.deb; do
+            for CODENAME in ${APT_CODENAMES}; do
+              reprepro -b "${APT_DIST_DIR}" includedeb "${CODENAME}" "$DEB"
+            done
+          done
+
+      - name: Export public key
+        run: |
+          gpg --armor --export "${GPG_KEY_ID}" > "${APT_DIST_DIR}/cvb-tools.gpg"
+
+      - name: Copy index.html
+        run: |
+          if [ -f index.html ]; then cp index.html "${APT_DIST_DIR}/"; fi
+
+      - name: Publish to gh-pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ${{ env.APT_DIST_DIR }}
+          publish_branch: gh-pages
