@@ -5,7 +5,10 @@ VERSION := 0.01
 PKG := cvb-tools
 
 all:
-	@echo "Targets: install, dist, deb, rpm, clean"
+	@echo "Targets: install, check, dist, deb, rpm, clean"
+
+check:
+	sh scripts/check-cockpit-v2.sh
 
 install:
 	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(PREFIX)/local/bin $(DESTDIR)$(MANDIR)/man1

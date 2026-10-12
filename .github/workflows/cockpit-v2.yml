@@ -1,0 +1,16 @@
+name: Cockpit v2 gate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  cockpit-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Paleta DS v2 (sem #55FCFF / #006D6F)
+        run: sh scripts/check-cockpit-v2.sh

@@ -27,5 +27,11 @@ make rpm
 Use the provided GitHub Actions workflow (`.github/workflows/release.yml`) or follow the on-prem steps
 we documented in the repository to publish to an APT repository (signed with GPG) and serve via nginx.
 
+## Cockpit v2
+The only UI here (`index.html`, the public APT/YUM page) follows the cloudvBOX DS v2 palette (graphite +
+accent-ink `#3FD1B9` / `#0E6E66`, replacing the v1 cyan `#55FCFF` and teal `#006D6F`). The tools themselves have no
+relation to the Cockpit beyond the visual identity. Details, palette and open decisions (in Portuguese):
+[`docs/cockpit-v2.md`](docs/cockpit-v2.md). Gate: `make check` (`scripts/check-cockpit-v2.sh`).
+
 ## License
 MIT © cloudvBOX Computing Ltda

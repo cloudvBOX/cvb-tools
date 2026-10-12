@@ -24,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Gate Cockpit v2 (paleta DS v2)
+        run: sh scripts/check-cockpit-v2.sh
+
       - name: Install build deps
         run: |
           sudo apt-get update
